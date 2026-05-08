@@ -1,7 +1,7 @@
 ---
 name: fireflies-to-tweets
 description: Turn Fireflies meeting transcripts into strategic, hypothesis-driven tweet threads. Uses the 4-System AI Content Engine (Strategy → Research → Performance → Assets) to extract signal, map to brand strategy, and generate visuals — AI runs the infrastructure, human approves the output.
-version: 2.0.0
+version: 2.1.0
 metadata:
   hermes:
     tags: [fireflies, twitter, xurl, content, meeting-notes, threads, personal-branding]
@@ -38,7 +38,7 @@ The framework: **Strategy Engine** (filter through your Content Brain) → **Res
 | System | What it does | Where it fits |
 |--------|-------------|---------------|
 | **Strategy Engine** | Filter every extraction through your Content Brain. If a quote doesn't reinforce what you're known for, skip it. | Step 0 |
-| **Research Engine** | If you have past tweet performance data, feed it in. Otherwise, apply universal signal principles (specifics, contrarian takes, decisions). | Step 3 |
+| **Research Engine** | Pulls live performance data via xurl — scores your last 25 tweets by engagement, detects winning patterns, and directs extraction toward what's already working. | Step 3-C |
 | **Performance Engine** | Every thread gets a hypothesis tag: Growth, Lead Flow, or Trust. You know what this content is *supposed* to do. | Step 4 |
 | **Asset Builder** | Generate a visual asset for the thread — diagram, framework, or concept image that strengthens the message. | Step 5 |
 
@@ -157,14 +157,86 @@ This step combines the Strategy Engine (filter) and Research Engine (signal dete
 - "Sarah will migrate the auth service by Friday" is good. "Action item: auth migration" is bad.
 - **Only include if the action item reveals something about HOW they operate** (their frameworks in action)
 
-### Phase C: Research Engine Check
+### Phase C: Research Engine — Pull Live Performance Data (xurl)
 
-If the user has past tweet performance data (analytics, top/worst performers from the last 7 days), ask for it. Feed it in to identify:
-- What formats are currently winning for them
-- What topics their audience is responding to
-- What to avoid
+**This is no longer optional.** Since xurl is configured, pull real performance data BEFORE extracting. This closes the Research Engine loop with actual numbers, not guesses.
 
-If no data is available, default to these universal signal principles:
+**Step C1 — Get your user ID:**
+
+```bash
+xurl whoami | python3 -c "import sys,json; print(json.load(sys.stdin)['data']['id'])"
+```
+
+Save this as `$USER_ID`.
+
+**Step C2 — Pull your last 25 original tweets with engagement metrics:**
+
+```bash
+xurl "/2/users/$USER_ID/tweets?max_results=25&tweet.fields=public_metrics,created_at&exclude=retweets,replies" > /tmp/recent_tweets.json
+```
+
+**Step C3 — Parse top and bottom performers:**
+
+```bash
+python3 << 'PYEOF'
+import json, sys
+
+with open("/tmp/recent_tweets.json") as f:
+    data = json.load(f)
+
+tweets = data.get("data", [])
+if not tweets:
+    print("⚠️ No recent tweets found. Falling back to universal signal principles.")
+    sys.exit(0)
+
+scored = []
+for t in tweets:
+    metrics = t.get("public_metrics", {})
+    # Composite engagement score (customize weights per hypothesis priority)
+    score = (
+        metrics.get("like_count", 0) * 1.0 +
+        metrics.get("retweet_count", 0) * 2.0 +
+        metrics.get("reply_count", 0) * 1.5 +
+        metrics.get("quote_count", 0) * 3.0 +
+        metrics.get("impression_count", 0) * 0.001
+    )
+    scored.append({
+        "id": t["id"],
+        "text": t["text"][:120],
+        "score": round(score, 1),
+        "metrics": metrics,
+        "created_at": t.get("created_at", "")
+    })
+
+scored.sort(key=lambda x: x["score"], reverse=True)
+
+print("🏆 TOP 5 — what's working:")
+for i, t in enumerate(scored[:5], 1):
+    print(f"  {i}. [{t['score']}] {t['text']}")
+
+print("\n📉 BOTTOM 5 — what's not landing:")
+for i, t in enumerate(scored[-5:], 1):
+    print(f"  {i}. [{t['score']}] {t['text']}")
+
+# Detect patterns
+top_texts = " ".join(t["text"] for t in scored[:5])
+print("\n🔍 PATTERN DETECTION:")
+if any(w in top_texts.lower() for w in ["we decided", "we're killing", "we're stopping"]):
+    print("  → Decisions/reversals perform well — prioritize these from the transcript")
+if any(w in top_texts.lower() for w in ["?", "agree", "what do you"]):
+    print("  → Questions/CTAs drive engagement — include in final tweet")
+if any(w in top_texts.lower() for w in ["$", "%", "x", "0"]):
+    print("  → Numbers/metrics resonate — pull stats from the transcript")
+if any(w in top_texts.lower() for w in ["mistake", "failed", "wrong", "learned"]):
+    print("  → Vulnerability/lessons perform — look for these in the transcript")
+PYEOF
+```
+
+**Step C4 — Apply the patterns to your extraction:**
+
+Feed the output of C3 into your thinking. If decisions are winning, prioritize decision moments from the transcript. If vulnerability wins, hunt for lessons-learned moments. Let the data tell you what to look for — don't guess.
+
+**Fallback:** If the API call fails (rate limit, auth issue, no tweets yet), default to universal signal principles:
 - Specifics > generalizations
 - Decisions > discussions
 - Contrarian takes > consensus
