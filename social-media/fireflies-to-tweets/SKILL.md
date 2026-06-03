@@ -1,7 +1,7 @@
 ---
 name: fireflies-to-tweets
 description: Turn Fireflies meeting transcripts into audience-resonant tweets and threads. Uses the 4-System AI Content Engine (Strategy → Research → Performance → Assets) reoriented around reader transformation — AI runs the infrastructure, human approves the output.
-version: 3.0.0
+version: 3.1.0
 metadata:
   hermes:
     tags: [fireflies, twitter, xurl, content, meeting-notes, threads, personal-branding]
@@ -11,7 +11,7 @@ metadata:
         prompt: "Enter your Fireflies API key"
         url: "https://docs.fireflies.ai/fundamentals/authorization"
       - key: content_brain
-        description: "Your Content Brain — the output from the Strategy Engine self-interview. Paste the full strategy Claude/ChatGPT generated (origin story, positioning, ICP, frameworks, what you're known for, and audience psychographics)."
+        description: "Your Content Brain — the output from the Strategy Engine self-interview. Paste the full strategy Claude/ChatGPT generated (origin story, positioning, ICP, frameworks, what you're known for, audience psychographics, and 20-50 of your best-performing posts as gold-standard examples)."
         prompt: "Paste your Content Brain strategy"
 ---
 
@@ -20,6 +20,12 @@ metadata:
 Turn meeting transcripts into tweets that resonate — not just tweets that are "on brand." The 4-System framework (Strategy → Research → Performance → Assets) still runs the infrastructure, but **every gate now optimizes for reader transformation first, brand alignment second.**
 
 **Core principle:** If your audience wouldn't feel seen, challenged, helped, or impressed — don't post it. Brand alignment is necessary but insufficient.
+
+**What changed in v3.1:**
+- **Post-Draft Quality Gate** — the actual draft is scored 0-1 against the 5-criteria rubric before it reaches you. Below 0.7? Auto-regenerated.
+- **Gold standard examples** — Content Brain now includes 20-50 of your best-performing posts as ground truth for the judge
+- **Rejection learning** — when you edit or reject a draft, the reason feeds back into the quality system
+- Quality score displayed in the review step so you can see it as a number, not a feeling
 
 **What changed in v3.0:**
 - Mandatory Audience Resonance Brief before drafting
@@ -373,6 +379,48 @@ Let content dictate format — don't force a thread:
 
 ---
 
+## Step 7b — Post-Draft Quality Gate (THE EVAL LOOP)
+
+**Do not present the draft to the user until it passes this gate.** This is the quality-control layer — the part that catches slop before it leaves the building. A better prompt is a sharper tool; this is the inspector checking what the tool produced.
+
+### The 5-Criteria Rubric (score 0-1 each)
+
+Score the actual draft output against the same five criteria used for angle selection, but now applied to the *finished text*:
+
+| Criterion | What 1.0 looks like | What 0.0 looks like |
+|-----------|--------------------|--------------------|
+| **Audience pain resonance** | Reader will feel personally called out; touches a fear/desire they recognize immediately | Generic; could apply to anyone |
+| **Novelty** | Surprising, contrarian, or counterintuitive — reader didn't already know this | Obvious; same take every account posts |
+| **Specific proof** | Contains concrete details from the transcript that prove the point (numbers, quotes, decisions) | Vague claims with no evidence; could be made up |
+| **Voice fit** | Sounds like the user wrote it — fragments, bluntness, personality intact | Sounds like ChatGPT; uses forbidden phrases; generic LinkedIn tone |
+| **Shareability** | Reader would DM this to someone, quote-tweet it, or save it for later | Reader scrolls past without a second thought |
+
+Score each criterion 0.0 to 1.0 with a one-line reason. Compute the average.
+
+### The Threshold
+
+- **≥ 0.7 average** → Pass. Present to user.
+- **0.5–0.69 average** → Flagged. Present to user WITH the score and a warning: *"⚠️ This draft scored [X]/1.0. Below quality threshold. Here's what's weak: [lowest criteria]. Want me to regenerate or do you want to see it anyway?"*
+- **< 0.5 average** → Hard fail. Do NOT show the user. Regenerate with the specific fix notes from the lowest-scoring criteria. Max 2 regenerations — if it still fails after 2 retries, surface the best attempt with the score and explain what's broken.
+
+### Why this works
+
+> A vague rubric ("is this good?" ) produces a vague score. A specific rubric ("does this contain at least one decision reversal with a concrete number?") produces a score you can trust. The judge inherits your taste only if you actually write your taste down.
+
+This gate turns slop from a feeling you keep having into a number you can debug. You can't fix "it felt off" — you CAN fix "audience pain scored 0.3 because the hook doesn't name a specific fear our ICP has."
+
+### Comparison against gold standard
+
+Before finalizing the score, compare the draft against the gold-standard examples in the Content Brain (your 20-50 best-performing posts). Ask:
+
+- Does this draft achieve the same density of specifics as your top performers?
+- Does it hit the same emotional register?
+- Would it belong in the same folder as your bangers, or would it stick out as weaker?
+
+If it's clearly below the gold standard, that should be reflected in the scores. The gold standard is your ground truth — the judge measures everything against it.
+
+---
+
 ## Step 8 — Hypothesis Tagging (Performance Engine)
 
 Every post gets two hypotheses:
@@ -417,6 +465,9 @@ Present the full package:
 ```
 🧵 Draft from [Meeting Title]
 
+📊 Quality Score: [X.X]/1.0
+   Pain: X.X | Novelty: X.X | Proof: X.X | Voice: X.X | Share: X.X
+
 👤 Reader hypothesis: [why they'd feel something]
 📈 Business hypothesis: [Growth/Lead Flow/Trust]
 
@@ -435,6 +486,16 @@ Post this? (yes / edit / cancel)
 ```
 
 **Never post without explicit user confirmation.**
+
+### If the user edits or rejects:
+
+When the user edits the draft or says "no, try again," **save the reason as a learning signal.** Ask them what specifically didn't work, then feed that back:
+- If they rewrote the hook → the old hook's angle category (pain-first, contrarian, story) scored lower in practice than on paper. Adjust future angle scoring.
+- If they cut a tweet → that tweet type (frameworks, behind-the-scenes, etc.) may not resonate. Feed this back into the Research Engine patterns.
+- If they said "this sounds generic" → update the Voice constraints with the specific phrases they flagged.
+- If they rejected the whole thing → save the transcript + rejected draft as a reference for what NOT to do.
+
+This closes the loop: every rejection makes the system harder to fool next time.
 
 ---
 
@@ -468,6 +529,8 @@ Space posts ~2 seconds apart. If you get a 429, wait 15 minutes.
 - **Private transcripts:** API key must belong to a user with access.
 - **Asset generation fails:** Skip visuals after 2-3 attempts. Content is the priority.
 - **No hypothesis clarity:** If you can't state BOTH the reader hypothesis and business hypothesis with specificity, the draft isn't ready.
+- **Skipping the quality gate:** The 0-1 rubric score is not optional. "It feels good" is not a score. If you can't assign a number to each criterion with a one-line reason, the draft hasn't been evaluated — it's been vibed. Score it or don't ship it.
+- **Ignoring the gold standard:** If the draft would look out of place next to the user's 20-50 best posts, that should tank the Voice and Shareability scores. The gold standard exists to prevent exactly this.
 
 ---
 
@@ -477,4 +540,5 @@ After posting:
 1. `xurl read $TWEET_1_ID` — verify the post is live
 2. Confirm thread renders correctly (replies nested)
 3. Share thread URL: `https://x.com/USERNAME/status/$TWEET_1_ID`
-4. **Post-mortem (7 days later):** Review performance against both hypotheses. Did the reader feel what you predicted? Did the business metric move? Feed learnings back into the Research Engine.
+4. **Save the quality scores** — record the per-criterion scores from the gate. This builds your quality baseline over time so you can spot when quality is rising or degrading.
+5. **Post-mortem (7 days later):** Review performance against both hypotheses. Did the reader feel what you predicted? Did the business metric move? Feed learnings back into the Research Engine *and* the gold standard — if a post outperformed your best historical content, it becomes a new gold-standard example. If it underperformed despite scoring high on the rubric, your rubric may have a blind spot.
