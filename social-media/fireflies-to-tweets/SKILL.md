@@ -1,7 +1,7 @@
 ---
 name: fireflies-to-tweets
 description: Turn Fireflies meeting transcripts into audience-resonant tweets and threads. Uses the 4-System AI Content Engine (Strategy → Research → Performance → Assets) reoriented around reader transformation — AI runs the infrastructure, human approves the output.
-version: 3.1.0
+version: 3.2.0
 metadata:
   hermes:
     tags: [fireflies, twitter, xurl, content, meeting-notes, threads, personal-branding]
@@ -20,6 +20,12 @@ metadata:
 Turn meeting transcripts into tweets that resonate — not just tweets that are "on brand." The 4-System framework (Strategy → Research → Performance → Assets) still runs the infrastructure, but **every gate now optimizes for reader transformation first, brand alignment second.**
 
 **Core principle:** If your audience wouldn't feel seen, challenged, helped, or impressed — don't post it. Brand alignment is necessary but insufficient.
+
+**What changed in v3.2:**
+- **Interview Panel** — four AI interviewers (Ferriss, Swisher, Stern, Hormozi) push deeper on extracted insights before drafting. Uncovers emotional truth, stakes, and the part nobody said out loud.
+- **Writer's Council replaces single-judge scoring** — Shaan Puri, Morgan Housel, Julian Shapiro, and David Perell each review the draft through their lens. Iterate until Council average ≥8/10.
+- **Persistent `content-lessons.md`** — rejection/edit learnings saved to a durable file that compounds across sessions and overrides the style guide when it conflicts.
+- **Raw interview file** — interview Q&A saved to `/tmp/fireflies_interview.md` as sacred source material.
 
 **What changed in v3.1:**
 - **Post-Draft Quality Gate** — the actual draft is scored 0-1 against the 5-criteria rubric before it reaches you. Below 0.7? Auto-regenerated.
@@ -305,6 +311,60 @@ If the answer is "maybe they'd find it informative," that's not enough. Aim for:
 
 ---
 
+## Step 5b — Interview Panel: Go Deeper Before You Draft
+
+**Do not start generating angles yet.** The transcript gave you what people said. Now push deeper on what they *meant* — the emotional truth, the stakes, the part nobody in the room wanted to say out loud.
+
+Four interviewers interrogate the extracted insights. Each asks 2-3 questions from their specific lens. Run them sequentially — each builds on the answers from the previous.
+
+### Tim Ferriss — Systems & Frameworks Lens
+> "I don't care about the story unless there's a system inside it."
+
+Ask 2-3 questions like:
+- "If you had to teach someone else to do this in 3 steps, what are they?"
+- "What's the decision rule or heuristic you use here that most people don't?"
+- "Forget the outcome — what was the *process* that led to it?"
+
+**Goal:** Extract a repeatable framework or decision rule the reader can steal.
+
+### Kara Swisher — Bullshit Detector Lens
+> "That's the PR version. What really happened?"
+
+Ask 2-3 questions like:
+- "What's the part nobody in that room wanted to say out loud?"
+- "Who disagreed with this decision and why? What did they actually say?"
+- "If this had failed, what would the post-mortem have been?"
+
+**Goal:** Extract the tension, conflict, or unvarnished truth behind the clean narrative.
+
+### Howard Stern — Emotional Honesty Lens
+> "Forget the strategy. What did you actually *feel*?"
+
+Ask 2-3 questions like:
+- "When that happened — were you scared? Pissed off? Relieved? Give me the real emotion."
+- "What was the worst moment? The one where you thought 'this might actually fail'?"
+- "Is there a moment you're still not over? Something that still bothers you?"
+
+**Goal:** Extract the emotional anchor — the feeling the reader will recognize in themselves.
+
+### Alex Hormozi — Business Stakes Lens
+> "What did this cost? Don't give me theory — give me the number."
+
+Ask 2-3 questions like:
+- "What did this cost in dollars? Time? Opportunities you passed on?"
+- "What was the upside if this worked? What was the actual downside if it didn't?"
+- "If you had to bet your own money on this working again, what odds would you give it?"
+
+**Goal:** Extract concrete stakes — numbers, tradeoffs, real-world consequences.
+
+### How to use the interview output
+
+The answers become additional source material for the draft. They live alongside your extracted signal. The interview often surfaces the *best* hook — the emotional moment Stern extracts or the bullshit Kara exposes is frequently more resonant than anything in the original transcript.
+
+Save the full interview Q&A to `/tmp/fireflies_interview.md`. This is your raw file — sacred, never paraphrased away. All drafts pull from it.
+
+---
+
 ## Step 6 — Generate 3 Candidate Angles
 
 **Do not draft yet.** Generate 3 angles, each optimized for a different reader entry point:
@@ -379,45 +439,55 @@ Let content dictate format — don't force a thread:
 
 ---
 
-## Step 7b — Post-Draft Quality Gate (THE EVAL LOOP)
+## Step 7b — Writer's Council: Multi-Persona Quality Gate (THE EVAL LOOP)
 
-**Do not present the draft to the user until it passes this gate.** This is the quality-control layer — the part that catches slop before it leaves the building. A better prompt is a sharper tool; this is the inspector checking what the tool produced.
+**Do not present the draft to the user until it passes the Council.** A single judge has blind spots. Four reviewers, each with a different lens, catch failure modes a single rubric misses.
 
-### The 5-Criteria Rubric (score 0-1 each)
+The Council reviews the draft in parallel. Each outputs:
 
-Score the actual draft output against the same five criteria used for angle selection, but now applied to the *finished text*:
+```
+Score: X/10
+What works: [one line]
+What breaks: [one line]
+Must-fix (editorial): [actionable change the machine can make right now]
+Info gap (needs you): [question only the creator can answer; route back to Interview Panel if needed]
+```
 
-| Criterion | What 1.0 looks like | What 0.0 looks like |
-|-----------|--------------------|--------------------|
-| **Audience pain resonance** | Reader will feel personally called out; touches a fear/desire they recognize immediately | Generic; could apply to anyone |
-| **Novelty** | Surprising, contrarian, or counterintuitive — reader didn't already know this | Obvious; same take every account posts |
-| **Specific proof** | Contains concrete details from the transcript that prove the point (numbers, quotes, decisions) | Vague claims with no evidence; could be made up |
-| **Voice fit** | Sounds like the user wrote it — fragments, bluntness, personality intact | Sounds like ChatGPT; uses forbidden phrases; generic LinkedIn tone |
-| **Shareability** | Reader would DM this to someone, quote-tweet it, or save it for later | Reader scrolls past without a second thought |
+### Shaan Puri — Shareability & Novelty Lens
+> "The hook either stops a scroll or it doesn't. Would anyone DM this to a friend?"
 
-Score each criterion 0.0 to 1.0 with a one-line reason. Compute the average.
+Shaan scores whether the draft is surprising, quotable, or shareable — or just correct. He's ruthless about the hook: if the first tweet doesn't create a "wait, what?" reaction, the draft fails regardless of substance.
+
+### Morgan Housel — Audience Pain & Emotional Truth Lens
+> "Does this tell a real story or just make a point? Would a reader feel something or just nod?"
+
+Morgan scores whether the draft reaches an actual human emotion — fear, relief, recognition, anger. If the reader would finish it and feel nothing, Morgan's score tanks. He's the bullshit detector for emotional claims that don't land.
+
+### Julian Shapiro — Voice Fit Lens
+> "Would you actually say that sentence out loud? That phrase right there — that's AI. Rewrite it like you're texting."
+
+Julian scores whether every sentence passes the "read it aloud" test. He flags any sentence that sounds like ChatGPT, any phrase from the forbidden list, any moment where the voice slips from human to corporate. He compares against the gold-standard examples in Content Brain.
+
+### David Perell — Specific Proof Lens
+> "This paragraph is vibes. Where's the number? Where's the moment? Show me the receipt or cut the claim."
+
+David scores whether claims are backed by concrete evidence from the transcript. He flags every assertion that isn't anchored in a specific number, quote, decision, or moment. "Most people believe X" without a source = instant penalty.
 
 ### The Threshold
 
-- **≥ 0.7 average** → Pass. Present to user.
-- **0.5–0.69 average** → Flagged. Present to user WITH the score and a warning: *"⚠️ This draft scored [X]/1.0. Below quality threshold. Here's what's weak: [lowest criteria]. Want me to regenerate or do you want to see it anyway?"*
-- **< 0.5 average** → Hard fail. Do NOT show the user. Regenerate with the specific fix notes from the lowest-scoring criteria. Max 2 regenerations — if it still fails after 2 retries, surface the best attempt with the score and explain what's broken.
+After all four score, compute the average:
 
-### Why this works
+- **Council average ≥ 8/10** → Pass. Present to user with individual scores.
+- **Council average 6–7/10** → Flagged. Present WITH scores + Council notes and a warning: *"⚠️ Council scored this [X]/10. [Lowest-scoring reviewer] flagged: [what broke]. Want me to revise against their notes or see it anyway?"*
+- **Council average < 6/10** → Hard fail. Do NOT show the user. Read every Council member's "Must-fix (editorial)" notes and revise. Re-submit to Council. Iterate until ≥8/10 or 3 revision rounds — whichever comes first. If 3 rounds and still below 8, surface the best attempt with scores and explain what's stuck.
 
-> A vague rubric ("is this good?" ) produces a vague score. A specific rubric ("does this contain at least one decision reversal with a concrete number?") produces a score you can trust. The judge inherits your taste only if you actually write your taste down.
+### Why multi-persona beats single-judge
 
-This gate turns slop from a feeling you keep having into a number you can debug. You can't fix "it felt off" — you CAN fix "audience pain scored 0.3 because the hook doesn't name a specific fear our ICP has."
+A single rubric applied by one judge catches what that judge is trained to see. Four judges with competing priorities catch each other's blind spots. Shaan might love a hook that Morgan flags as emotionally hollow. Julian might approve voice that David shreds for lacking proof. The averaging is the signal — a draft that scores high across all four is genuinely solid. A draft with one 9 and three 5s has a problem the 9 didn't see.
 
 ### Comparison against gold standard
 
-Before finalizing the score, compare the draft against the gold-standard examples in the Content Brain (your 20-50 best-performing posts). Ask:
-
-- Does this draft achieve the same density of specifics as your top performers?
-- Does it hit the same emotional register?
-- Would it belong in the same folder as your bangers, or would it stick out as weaker?
-
-If it's clearly below the gold standard, that should be reflected in the scores. The gold standard is your ground truth — the judge measures everything against it.
+Before finalizing, each Council member compares the draft against the gold-standard examples in Content Brain (your 20-50 best-performing posts). If the draft would look out of place next to your bangers, that should be reflected in the scores — particularly Julian's and David's. The gold standard is ground truth.
 
 ---
 
@@ -465,8 +535,9 @@ Present the full package:
 ```
 🧵 Draft from [Meeting Title]
 
-📊 Quality Score: [X.X]/1.0
-   Pain: X.X | Novelty: X.X | Proof: X.X | Voice: X.X | Share: X.X
+📊 Writer's Council: [X.X]/10
+   Shaan (Share/Novelty): X/10 | Morgan (Pain/Emotion): X/10
+   Julian (Voice): X/10 | David (Proof): X/10
 
 👤 Reader hypothesis: [why they'd feel something]
 📈 Business hypothesis: [Growth/Lead Flow/Trust]
@@ -496,6 +567,21 @@ When the user edits the draft or says "no, try again," **save the reason as a le
 - If they rejected the whole thing → save the transcript + rejected draft as a reference for what NOT to do.
 
 This closes the loop: every rejection makes the system harder to fool next time.
+
+### Persistent lessons file
+
+After each session, save confirmed lessons to `~/.hermes/skills/social-media/fireflies-to-tweets/content-lessons.md`. This file compounds across sessions and overrides the style guide when it conflicts. Every future first draft starts smarter.
+
+Format each lesson as:
+```
+## Lesson: [what we learned]
+**Source:** [session date] — [transcript title]
+**Trigger:** [what the user said when editing/rejecting]
+**Rule:** [how this changes future behavior]
+**Overrides:** [which style guide / voice constraint this modifies]
+```
+
+When loading the skill, scan `content-lessons.md` and apply any rules that override the voice constraints or style guide. Lessons are cumulative — if a lesson contradicts an earlier one, the newer lesson wins.
 
 ---
 
@@ -529,8 +615,10 @@ Space posts ~2 seconds apart. If you get a 429, wait 15 minutes.
 - **Private transcripts:** API key must belong to a user with access.
 - **Asset generation fails:** Skip visuals after 2-3 attempts. Content is the priority.
 - **No hypothesis clarity:** If you can't state BOTH the reader hypothesis and business hypothesis with specificity, the draft isn't ready.
-- **Skipping the quality gate:** The 0-1 rubric score is not optional. "It feels good" is not a score. If you can't assign a number to each criterion with a one-line reason, the draft hasn't been evaluated — it's been vibed. Score it or don't ship it.
+- **Skipping the quality gate:** The Writer's Council is not optional. "It feels good" is not a score. If you can't produce individual scores from all four reviewers with specific fix notes, the draft hasn't been evaluated — it's been vibed. Council it or don't ship it.
 - **Ignoring the gold standard:** If the draft would look out of place next to the user's 20-50 best posts, that should tank the Voice and Shareability scores. The gold standard exists to prevent exactly this.
+- **Skipping the Interview Panel:** The transcript only contains what was said. The Interview Panel extracts what was *meant*. Without it, emotional truth and stakes stay buried. Run the panel even when it feels redundant — it often surfaces the best hook.
+- **Treating the Council as optional:** Multi-persona review is the system. A draft that one reviewer loves and three flag is broken in ways the one didn't see. Council average is the real score — not the high-water mark.
 
 ---
 
@@ -540,5 +628,5 @@ After posting:
 1. `xurl read $TWEET_1_ID` — verify the post is live
 2. Confirm thread renders correctly (replies nested)
 3. Share thread URL: `https://x.com/USERNAME/status/$TWEET_1_ID`
-4. **Save the quality scores** — record the per-criterion scores from the gate. This builds your quality baseline over time so you can spot when quality is rising or degrading.
+4. **Save the Council scores** — record all four reviewer scores from the gate. This builds your quality baseline over time so you can spot when quality is rising or degrading, and which reviewer is consistently the hardest to please (that's your blind spot).
 5. **Post-mortem (7 days later):** Review performance against both hypotheses. Did the reader feel what you predicted? Did the business metric move? Feed learnings back into the Research Engine *and* the gold standard — if a post outperformed your best historical content, it becomes a new gold-standard example. If it underperformed despite scoring high on the rubric, your rubric may have a blind spot.
