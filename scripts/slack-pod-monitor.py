@@ -99,7 +99,7 @@ def get_all_channels():
     return channels
 
 
-def get_recent_messages(channel_id, limit=20):
+def get_recent_messages(channel_id, limit=5):
     """Get the most recent messages in a channel."""
     params = {"channel": channel_id, "limit": limit}
     data = slack_api("https://slack.com/api/conversations.history", params)
@@ -197,7 +197,7 @@ def main():
     skipped_dead = 0
     skipped_archived = 0
     now = time.time()
-    rate_limit_delay = 0.05  # 50ms between channel checks
+    rate_limit_delay = 0  # no delay — user tokens have generous rate limits
 
     # ── Load track-from timestamp ───────────────────────────────
     # Only messages newer than this get SLA-tracked.
