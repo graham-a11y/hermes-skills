@@ -267,6 +267,10 @@ def main():
             if not user_id:
                 continue
 
+            # Slackbot (USLACKBOT) messages are automated — never need response
+            if user_id == "USLACKBOT":
+                continue
+
             if user_id in internal_ids:
                 continue
 
