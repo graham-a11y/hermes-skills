@@ -99,7 +99,7 @@ def get_all_channels():
     return channels
 
 
-def get_recent_messages(channel_id, limit=5):
+def get_recent_messages(channel_id, limit=20):
     """Get the most recent messages in a channel."""
     params = {"channel": channel_id, "limit": limit}
     data = slack_api("https://slack.com/api/conversations.history", params)
@@ -142,23 +142,128 @@ DEBUG_CHANNELS = []  # set channels like ["302cleanit"] to debug
 EXCLUDED_NAMES = ["viktor", "victor"]
 
 
-def is_thanks_message(text):
-    """Check if a message is just a thank-you (not needing a reply)."""
+# ── Message content classification ──────────────────────────────
+# Messages matching these categories don't need a reply — they're
+# status updates, confirmations, participation signals, etc.
+
+# Phrases that indicate a test message (standalone, no response expected)
+TEST_PATTERNS = [
+    "test", "testing", "just testing", "this is a test",
+    "test message", "ignore this",
+]
+
+# Words/phrases that indicate a confirmation/acknowledgment
+CONFIRMATION_STARTS = {
+    "confirmed", "confirming", "will do", "got it", "gotcha",
+    "sounds good", "ok", "okay", "done", "all set",
+    "perfect", "great", "awesome", "excellent",
+    "noted", "understood", "roger that", "copy that",
+    "on it", "on this", "looking into", "checking",
+}
+
+# Phrases indicating a status update or explanation (informational only)
+STATUS_PATTERNS = [
+    "i'll complete", "i will complete", "we'll complete",
+    "i'll finish", "i will finish", "we'll finish",
+    "i'll get", "i will get", "we'll get",
+    "i'll handle", "i will handle", "we'll handle",
+    "i'll take care", "i will take care",
+    "working on", "in progress", "on track",
+    "i'll do", "i will do", "i'll have",
+    "i missed", "i was in", "i was on",
+    "sorry i missed", "sorry for", "apologies",
+    "stuck in", "was out", "was busy",
+    "had a", "was at a",
+    "i'm running", "i am running",
+]
+
+# Phrases indicating someone is joining/participating
+PARTICIPATION_PATTERNS = [
+    "jumping on", "jumping in", "jumping into",
+    "hopping on", "hopping in",
+    "logging on", "logging in",
+    "joining the", "joining now",
+    "here now", "i'm here", "i am here",
+    "i'm on", "i am on",
+    "present", "ready to",
+]
+
+# Broader thank-you detection — substring match for thanks-related words
+THANKS_SUBSTRINGS = [
+    "thank", "thanks", "thankyou", "thx", "ty",
+    "cheers", "appreciate", "much appreciated",
+]
+
+
+def _clean_text(text):
+    """Lowercase, strip emoji and punctuation for matching."""
     clean = text.lower().strip()
-    for ch in "!.,?🙏👍😊🙌🎉✨❤️💪👏✅😄😁😀🤗🙂":
+    for ch in "!.,?🙏👍😊🙌🎉✨❤️💪👏✅😄😁😀🤗🙂👋🤝💯":
         clean = clean.replace(ch, "")
-    clean = clean.strip()
-    thanks_patterns = {
-        "thanks", "thank you", "thankyou", "ty", "thx", "cheers",
-        "thank you!", "thanks!", "thanks all", "thanks everyone",
-        "thank you all", "thank you everyone", "thx!",
-        "thanks much", "thanks a lot", "thank you very much",
-        "much appreciated", "appreciate it", "appreciated",
-        "great thanks", "ok thanks", "ok thank you",
-        "sounds good thanks", "perfect thanks", "awesome thanks",
-        "got it thanks", "got it thank you",
-    }
-    return clean in thanks_patterns
+    return clean.strip()
+
+
+def is_thanks_message(text):
+    """Check if a message is a thank-you (no reply needed)."""
+    clean = _clean_text(text)
+    for pattern in THANKS_SUBSTRINGS:
+        if pattern in clean:
+            return True
+    return False
+
+
+def is_test_message(text):
+    """Check if a message is a test (no reply needed)."""
+    clean = _clean_text(text)
+    # Must be short (< 50 chars after cleaning) and match a test pattern
+    if len(clean) > 50:
+        return False
+    for pattern in TEST_PATTERNS:
+        if clean == pattern or clean.startswith(pattern + " ") or clean == pattern:
+            return True
+    return False
+
+
+def is_confirmation(text):
+    """Check if a message is a confirmation/acknowledgment (no reply needed)."""
+    clean = _clean_text(text)
+    # Short confirmations
+    if len(clean) <= 30:
+        for start in CONFIRMATION_STARTS:
+            if clean == start or clean.startswith(start + " ") or clean.startswith(start + ","):
+                return True
+    return False
+
+
+def is_status_update(text):
+    """Check if a message is a status update or explanation (informational only)."""
+    clean = _clean_text(text)
+    for pattern in STATUS_PATTERNS:
+        if pattern in clean:
+            return True
+    return False
+
+
+def is_participation_signal(text):
+    """Check if a message is someone joining/participating (no reply needed)."""
+    clean = _clean_text(text)
+    if len(clean) > 80:
+        return False
+    for pattern in PARTICIPATION_PATTERNS:
+        if pattern in clean:
+            return True
+    return False
+
+
+def is_no_reply_needed(text):
+    """Check if a message doesn't need a response (test, confirmation, status, thanks, etc.)."""
+    return (
+        is_thanks_message(text)
+        or is_test_message(text)
+        or is_confirmation(text)
+        or is_status_update(text)
+        or is_participation_signal(text)
+    )
 
 
 def is_excluded_sender(sender):
@@ -298,10 +403,42 @@ def main():
                             if isinstance(elem, dict) and elem.get("type") == "text":
                                 text = elem.get("text", "")
                                 break
-            if is_thanks_message(text):
+            if is_no_reply_needed(text):
                 continue
 
             msg_ts = float(msg.get("ts", 0))
+
+            # Active conversation heuristic: if an internal user replied
+            # to an earlier message from the SAME external sender within
+            # this window, AND that earlier message was recent (same exchange),
+            # the conversation is actively managed.
+            # Without the time gate, a reply to a days-old message from the
+            # same sender would suppress detection of a completely new topic.
+            CONVERSATION_ACTIVE_SECONDS = 3600  # 1 hour
+            conversation_active = False
+            for earlier_msg in messages:
+                earlier_ts = float(earlier_msg.get("ts", 0))
+                if earlier_ts >= msg_ts:
+                    continue
+                # Only consider it the same exchange if the earlier message
+                # was within the active window
+                if msg_ts - earlier_ts > CONVERSATION_ACTIVE_SECONDS:
+                    continue
+                earlier_user = earlier_msg.get("user", "")
+                if earlier_user == user_id:
+                    for mid_msg in messages:
+                        mid_ts = float(mid_msg.get("ts", 0))
+                        if mid_ts <= earlier_ts or mid_ts >= msg_ts:
+                            continue
+                        mid_user = mid_msg.get("user", "")
+                        if mid_user in internal_ids:
+                            conversation_active = True
+                            break
+                if conversation_active:
+                    break
+
+            if conversation_active:
+                continue
 
             # ── Check for a proper internal response ────────────
             if debug:
