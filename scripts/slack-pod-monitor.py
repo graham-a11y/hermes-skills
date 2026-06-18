@@ -278,11 +278,21 @@ def is_excluded_sender(sender):
 
 
 def is_tag_forward_message(text):
-    """Internal messages that are just tagging/forwarding — NOT a client reply."""
+    """Internal messages that are just tagging/forwarding — NOT a client reply.
+
+    Only triggers when Slack mentions are present AND the remaining text
+    after stripping them is trivial. Short messages with NO mentions
+    (like "ok", "yeah that works") pass through as real replies.
+    """
     import re
     # Strip Slack user mentions (<@U...>) and channel mentions (<#C...|name>)
     stripped = re.sub(r'<@[A-Z0-9]+>', '', text)
     stripped = re.sub(r'<#[A-Z0-9]+\|[^>]+>', '', stripped)
+
+    # If no mentions were stripped, it's not a tag-forward — it's a real reply
+    if stripped == text:
+        return False
+
     stripped = stripped.strip().rstrip('.,;:!? \t')
 
     if len(stripped) <= 2:
