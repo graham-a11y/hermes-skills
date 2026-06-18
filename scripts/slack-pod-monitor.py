@@ -139,7 +139,7 @@ def resolve_sender(msg, users):
 
 # ── Debug: log what the script sees for specific channels ────────
 DEBUG_CHANNELS = []  # set channels like ["302cleanit"] to debug
-EXCLUDED_NAMES = ["viktor", "victor", "grey", "mopstar"]
+EXCLUDED_NAMES = ["viktor", "victor"]
 
 
 # ── Message content classification ──────────────────────────────
