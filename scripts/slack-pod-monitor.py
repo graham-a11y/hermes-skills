@@ -277,6 +277,24 @@ def is_excluded_sender(sender):
     return False
 
 
+def is_tag_forward_message(text):
+    """Internal messages that are just tagging/forwarding — NOT a client reply."""
+    import re
+    # Strip Slack user mentions (<@U...>) and channel mentions (<#C...|name>)
+    stripped = re.sub(r'<@[A-Z0-9]+>', '', text)
+    stripped = re.sub(r'<#[A-Z0-9]+\|[^>]+>', '', stripped)
+    stripped = stripped.strip().rstrip('.,;:!? \t')
+
+    if len(stripped) <= 2:
+        return True
+
+    clean = _clean_text(stripped)
+    if len(clean) <= 20:
+        return True
+
+    return False
+
+
 def main():
     token = os.environ.get("SLACK_USER_TOKEN")
     if not token:
@@ -454,6 +472,12 @@ def main():
                 later_user = later_msg.get("user", "")
                 if later_user and later_user in internal_ids:
                     later_text = later_msg.get("text", "")
+                    # Skip messages that are just tagging team members (not a real reply)
+                    if is_tag_forward_message(later_text):
+                        if debug:
+                            lname = users.get(later_user, {}).get("name", later_user)
+                            print(f"    ⊘ tag-forward from {lname} (skipped): «{later_text[:50]}»", file=sys.stderr)
+                        continue
                     # An internal user replying at all counts as handled — even if
                     # they're saying "thanks" or closing the thread.
                     has_internal_response = True
