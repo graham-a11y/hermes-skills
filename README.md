@@ -17,3 +17,12 @@ hermes skills install fireflies-to-tweets
 ```bash
 hermes skills check && hermes skills update
 ```
+
+### hermes-tweet
+Search tweets, read replies, look up users, monitor trends, post tweets, send DMs, and gate X/Twitter account actions through Xquik from Hermes Agent.
+
+**Install:**
+```bash
+hermes skills tap add graham-a11y/hermes-skills
+hermes skills install hermes-tweet
+```
